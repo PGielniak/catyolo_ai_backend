@@ -1,0 +1,49 @@
+[project]
+name = "catyolo-ai-backend"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.13"
+dependencies = [
+    "fastapi>=0.135.1",
+    "einops==0.6.0",
+    "imutils==0.5.4",
+    "ipykernel==6.29.5",
+    "ipython==8.12.3",
+    "matplotlib>=3.10.8",
+    "numpy<2",
+    "opencv-python==4.6.0.66",
+    "pathlib>=1.0.1",
+    "pydantic>=2.12.5",
+    "python-dotenv>=1.2.2",
+    "requests>=2.32.5",
+    "sqlalchemy>=2.0.48",
+    "timm==0.9.0",
+    "uvicorn>=0.42.0",
+    "ultralytics>=8.4.23",
+    # Laptop: Standard Torch with CUDA support
+    "torch==2.6.0; platform_machine == 'x86_64'",
+    "torchvision==0.21.0; platform_machine == 'x86_64'",
+    # Raspberry Pi: Torch CPU-only (Hailo handles the AI math)
+    "torch==2.6.0; platform_machine == 'aarch64'",
+    "torchvision==0.21.0; platform_machine == 'aarch64'",
+]
+
+[tool.uv]
+# This tells uv to look for both architectures when resolving
+required-environments = [
+    "sys_platform == 'linux' and platform_machine == 'aarch64'",
+]
+
+[[tool.uv.index]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+explicit = true
+
+[tool.uv.sources]
+# Directs the Pi to use the CPU-only wheels for Torch
+torch = [
+  { index = "pytorch-cpu", marker = "platform_machine == 'aarch64'" },
+]
+torchvision = [
+  { index = "pytorch-cpu", marker = "platform_machine == 'aarch64'" },
+]
