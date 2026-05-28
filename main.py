@@ -8,7 +8,7 @@ import logging
 from logging.handlers import RotatingFileHandler
 from services.api_key_validation_service import ApiKeyValidationService, ApiKeyValidationRequest
 from dotenv import load_dotenv
-from routes import api_key, scene, action, log, frame, video
+from routes import api_key, scene, action, log, frame
 from services.api_key_validation_service import ApiKeyValidationService
 from services.scene_service import SceneService
 from services.action_service import ActionService
@@ -48,7 +48,6 @@ scene.route_config = scene.SceneRouteConfig(logger=logger, scene_service=SceneSe
 action.route_config = action.ActionRouteConfig(logger=logger, action_service=ActionService(database))
 log.route_config = log.LogRouteConfig(logger=logger, log_service=LogService(logger))
 frame.route_config = frame.FrameRouteConfig(logger=logger)
-video.route_config = video.VideoRouteConfig(logger=logger)
 
 
 app = FastAPI()
@@ -57,7 +56,6 @@ app.include_router(scene.router, prefix="/scene", tags=["scene"])
 app.include_router(action.router, prefix="/action", tags=["action"])
 app.include_router(log.router, prefix="/log", tags=["log"])
 app.include_router(frame.router, prefix="/frame", tags=["frame"])
-app.include_router(video.router, prefix="/video", tags=["video"])
 
 
 

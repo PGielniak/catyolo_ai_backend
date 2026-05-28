@@ -35,6 +35,8 @@ class SqliteDatabase:
                 conn.execute("ALTER TABLE scenes ADD COLUMN camera_username TEXT")
             if 'camera_password' not in cols:
                 conn.execute("ALTER TABLE scenes ADD COLUMN camera_password TEXT")
+            if 'vlm_prompt' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN vlm_prompt TEXT")
             conn.commit()
 
     def create_tables(self):

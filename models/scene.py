@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, LargeBinary, JSON
+from sqlalchemy import Column, Integer, String, LargeBinary, JSON, Text
 from models.base import Base
 import uuid
 from dataclasses import dataclass
@@ -15,6 +15,7 @@ class Scene(Base):
     image = Column(LargeBinary)
     red_zones = Column(JSON)
     action_ids = Column(JSON)
+    vlm_prompt = Column(Text, nullable=True)
 
 
 @dataclass(frozen=True)

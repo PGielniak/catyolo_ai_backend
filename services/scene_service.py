@@ -24,7 +24,8 @@ class SceneService:
                      red_zones: list[RedZone],
                      action_ids: list[UUID] = None,
                      camera_username: str = None,
-                     camera_password: str = None):
+                     camera_password: str = None,
+                     vlm_prompt: str = None):
         # Convert UUID objects to strings for JSON serialization
         action_ids_str = [str(uuid) for uuid in action_ids] if action_ids else action_ids
         # Convert RedZone objects to dicts for JSON serialization
@@ -36,7 +37,8 @@ class SceneService:
                      camera_password=camera_password,
                      image=image,
                      red_zones=red_zones_dict,
-                     action_ids=action_ids_str)
+                     action_ids=action_ids_str,
+                     vlm_prompt=vlm_prompt)
         self.database.create_scene(scene)
         return scene
 
@@ -54,7 +56,8 @@ class SceneService:
                      red_zones: list[RedZone],
                      action_ids: list[UUID] = None,
                      camera_username: str = None,
-                     camera_password: str = None):
+                     camera_password: str = None,
+                     vlm_prompt: str = None):
         scene = self.database.get_scene(scene_id)
         scene.scene_name = scene_name
         scene.camera_ip_address = camera_ip_address
@@ -69,6 +72,7 @@ class SceneService:
             scene.action_ids = [str(uuid) for uuid in action_ids]
         else:
             scene.action_ids = action_ids
+        scene.vlm_prompt = vlm_prompt
         self.database.update_scene(scene)
 
         return scene
