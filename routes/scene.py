@@ -38,6 +38,7 @@ class SceneCreateUpdateRequest(BaseModel):
     image: CameraFrame
     red_zones: list[RedZone] = []
     action_ids: Optional[list[UUID4]] = None
+    vlm_prompt: Optional[str] = None
 
 class SceneDeleteRequest(BaseModel):
     scene_id: UUID4
@@ -56,6 +57,7 @@ class SceneResponse(BaseModel):
     image: CameraFrame
     red_zones: list[RedZone] = []
     action_ids: Optional[list[UUID4]] = None
+    vlm_prompt: Optional[str] = None
 
 
 @router.get("/")
@@ -76,7 +78,8 @@ def list_scenes(config: SceneRouteConfig = Depends(get_scene_route_config)) -> l
                            camera_password=scene.camera_password,
                            image=CameraFrame(image=scene.image),
                            red_zones=red_zones_objects,
-                           action_ids=scene.action_ids)
+                           action_ids=scene.action_ids,
+                           vlm_prompt=scene.vlm_prompt)
 
     mapped_scenes = list(map(map_scene, scenes))
     return mapped_scenes
@@ -99,7 +102,8 @@ def get_scene(scene_id: UUID4, config: SceneRouteConfig = Depends(get_scene_rout
                                  camera_password=scene.camera_password,
                                  image=CameraFrame(image=scene.image),
                                  red_zones=red_zones_objects,
-                                 action_ids=scene.action_ids)
+                                 action_ids=scene.action_ids,
+                                 vlm_prompt=scene.vlm_prompt)
     return mapped_scene
 
 @router.post("/create")
@@ -114,7 +118,8 @@ def create_scene(scene_request: SceneCreateUpdateRequest, config: SceneRouteConf
             camera_password=scene_request.camera_password,
             image=scene_request.image.image,
             red_zones=scene_request.red_zones,
-            action_ids=scene_request.action_ids
+            action_ids=scene_request.action_ids,
+            vlm_prompt=scene_request.vlm_prompt
         )
     except Exception as e:
         message = f"Failed to create scene: {e}"
@@ -132,7 +137,8 @@ def create_scene(scene_request: SceneCreateUpdateRequest, config: SceneRouteConf
         camera_password=scene.camera_password,
         image=CameraFrame(image=scene.image),
         red_zones=red_zones_objects,
-        action_ids=scene.action_ids
+        action_ids=scene.action_ids,
+        vlm_prompt=scene.vlm_prompt
     )
     return mapped_scene
 
@@ -154,7 +160,8 @@ def update_scene(scene_id: UUID4, scene_request: SceneCreateUpdateRequest, confi
                                              scene_request.red_zones,
                                              scene_request.action_ids,
                                              camera_username=scene_request.camera_username,
-                                             camera_password=scene_request.camera_password)
+                                             camera_password=scene_request.camera_password,
+                                             vlm_prompt=scene_request.vlm_prompt)
 
     # Convert dictionary-based red zones back to RedZone objects for response
     red_zones_objects = red_zones_from_dict(updated_scene.red_zones) if updated_scene.red_zones else []
@@ -167,7 +174,8 @@ def update_scene(scene_id: UUID4, scene_request: SceneCreateUpdateRequest, confi
                                   camera_password=updated_scene.camera_password,
                                   image=CameraFrame(image=updated_scene.image),
                                   red_zones=red_zones_objects,
-                                  action_ids=updated_scene.action_ids)
+                                  action_ids=updated_scene.action_ids,
+                                  vlm_prompt=updated_scene.vlm_prompt)
     return mapped_scene
 
 @router.delete("/delete/{scene_id}")
