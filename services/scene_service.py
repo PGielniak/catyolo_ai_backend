@@ -22,13 +22,12 @@ class SceneService:
                      camera_port: int,
                      image: bytes,
                      red_zones: list[RedZone],
-                     action_ids: list[UUID] = None,
                      camera_username: str = None,
                      camera_password: str = None,
-                     vlm_prompt: str = None):
-        # Convert UUID objects to strings for JSON serialization
-        action_ids_str = [str(uuid) for uuid in action_ids] if action_ids else action_ids
-        # Convert RedZone objects to dicts for JSON serialization
+                     scene_prompt: str = None,
+                     scene_prompt_interval: int = None,
+                     scene_prompt_action_ids: list[UUID] = None):
+        scene_prompt_action_ids_str = [str(uuid) for uuid in scene_prompt_action_ids] if scene_prompt_action_ids else scene_prompt_action_ids
         red_zones_dict = self._red_zones_to_dict(red_zones)
         scene = Scene(scene_name=scene_name,
                      camera_ip_address=camera_ip_address,
@@ -37,8 +36,9 @@ class SceneService:
                      camera_password=camera_password,
                      image=image,
                      red_zones=red_zones_dict,
-                     action_ids=action_ids_str,
-                     vlm_prompt=vlm_prompt)
+                     scene_prompt=scene_prompt,
+                     scene_prompt_interval=scene_prompt_interval,
+                     scene_prompt_action_ids=scene_prompt_action_ids_str)
         self.database.create_scene(scene)
         return scene
 
@@ -54,10 +54,11 @@ class SceneService:
                      camera_port: int,
                      image: bytes,
                      red_zones: list[RedZone],
-                     action_ids: list[UUID] = None,
                      camera_username: str = None,
                      camera_password: str = None,
-                     vlm_prompt: str = None):
+                     scene_prompt: str = None,
+                     scene_prompt_interval: int = None,
+                     scene_prompt_action_ids: list[UUID] = None):
         scene = self.database.get_scene(scene_id)
         scene.scene_name = scene_name
         scene.camera_ip_address = camera_ip_address
@@ -65,14 +66,13 @@ class SceneService:
         scene.camera_username = camera_username
         scene.camera_password = camera_password
         scene.image = image
-        # Convert RedZone objects to dicts for JSON serialization
         scene.red_zones = self._red_zones_to_dict(red_zones)
-        # Convert UUID objects to strings for JSON serialization
-        if action_ids:
-            scene.action_ids = [str(uuid) for uuid in action_ids]
+        scene.scene_prompt = scene_prompt
+        scene.scene_prompt_interval = scene_prompt_interval
+        if scene_prompt_action_ids:
+            scene.scene_prompt_action_ids = [str(uuid) for uuid in scene_prompt_action_ids]
         else:
-            scene.action_ids = action_ids
-        scene.vlm_prompt = vlm_prompt
+            scene.scene_prompt_action_ids = scene_prompt_action_ids
         self.database.update_scene(scene)
 
         return scene

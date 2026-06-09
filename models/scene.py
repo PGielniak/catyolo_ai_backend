@@ -2,6 +2,7 @@ from sqlalchemy import Column, Integer, String, LargeBinary, JSON, Text
 from models.base import Base
 import uuid
 from dataclasses import dataclass
+from typing import Optional
 
 class Scene(Base):
     __tablename__ = 'scenes'
@@ -14,8 +15,9 @@ class Scene(Base):
     camera_password = Column(String(255), nullable=True)
     image = Column(LargeBinary)
     red_zones = Column(JSON)
-    action_ids = Column(JSON)
-    vlm_prompt = Column(Text, nullable=True)
+    scene_prompt = Column(Text, nullable=True)
+    scene_prompt_interval = Column(Integer, nullable=True)
+    scene_prompt_action_ids = Column(JSON, nullable=True)
 
 
 @dataclass(frozen=True)
@@ -29,3 +31,7 @@ class RedZone:
     width: int
     height: int
     forbidden_classes: list[str]
+    vlm_prompt: Optional[str] = None
+    depth_enabled: Optional[bool] = None
+    depth_margin: Optional[float] = None
+    action_ids: Optional[list[str]] = None

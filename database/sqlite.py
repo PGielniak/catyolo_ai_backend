@@ -1,10 +1,14 @@
 from sqlalchemy import create_engine, MetaData, Table, Column, inspect
 from sqlalchemy.orm import sessionmaker, Session
 import sqlite3
+import json
+import logging
 from uuid import UUID
 from models.scene import Scene, Base
 from models.action import Action
 from contextlib import contextmanager
+
+logger = logging.getLogger("catyolo_backend")
 
 class SqliteDatabase:
     def __init__(self, db_path: str = "catyolo.db"):
@@ -26,7 +30,7 @@ class SqliteDatabase:
 
 
     def migrate(self):
-        """Add columns introduced after initial schema creation."""
+        """Add columns introduced after initial schema creation and drop removed ones."""
         with sqlite3.connect(self.db_path) as conn:
             cur = conn.cursor()
             cur.execute("PRAGMA table_info(scenes)")
@@ -35,9 +39,60 @@ class SqliteDatabase:
                 conn.execute("ALTER TABLE scenes ADD COLUMN camera_username TEXT")
             if 'camera_password' not in cols:
                 conn.execute("ALTER TABLE scenes ADD COLUMN camera_password TEXT")
-            if 'vlm_prompt' not in cols:
-                conn.execute("ALTER TABLE scenes ADD COLUMN vlm_prompt TEXT")
+            if 'scene_prompt' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt TEXT")
+            if 'scene_prompt_interval' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt_interval INTEGER")
+            if 'scene_prompt_action_ids' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt_action_ids JSON")
+            # action_ids moved from the scene level into each red zone (stored inside
+            # the red_zones JSON column). Drop the now-obsolete column.
+            if 'action_ids' in cols:
+                try:
+                    conn.execute("ALTER TABLE scenes DROP COLUMN action_ids")
+                except sqlite3.OperationalError as e:
+                    logger.warning(f"Could not drop scenes.action_ids column: {e}")
+            # vlm_prompt moved from the scene level into each red zone (stored inside
+            # the red_zones JSON column). Backfill any existing scene-level prompt into
+            # its zones, then drop the now-obsolete column.
+            if 'vlm_prompt' in cols:
+                self._backfill_vlm_prompt_into_red_zones(conn)
+                try:
+                    conn.execute("ALTER TABLE scenes DROP COLUMN vlm_prompt")
+                except sqlite3.OperationalError as e:
+                    # DROP COLUMN requires SQLite >= 3.35.0; leave the column in place
+                    # (it is no longer mapped by the ORM, so it is harmless) if unsupported.
+                    logger.warning(f"Could not drop scenes.vlm_prompt column: {e}")
             conn.commit()
+
+    @staticmethod
+    def _backfill_vlm_prompt_into_red_zones(conn: sqlite3.Connection):
+        """Copy each scene's legacy scene-level vlm_prompt into every red zone that
+        does not already define its own prompt."""
+        cur = conn.cursor()
+        cur.execute(
+            "SELECT scene_id, red_zones, vlm_prompt FROM scenes "
+            "WHERE vlm_prompt IS NOT NULL AND vlm_prompt != ''"
+        )
+        for scene_id, red_zones_raw, vlm_prompt in cur.fetchall():
+            try:
+                red_zones = json.loads(red_zones_raw) if red_zones_raw else []
+            except (TypeError, json.JSONDecodeError):
+                logger.warning(f"Skipping vlm_prompt backfill for scene {scene_id}: invalid red_zones JSON")
+                continue
+            if not isinstance(red_zones, list):
+                continue
+            changed = False
+            for rz in red_zones:
+                if isinstance(rz, dict) and not rz.get('vlm_prompt'):
+                    rz['vlm_prompt'] = vlm_prompt
+                    changed = True
+            if changed:
+                conn.execute(
+                    "UPDATE scenes SET red_zones = ? WHERE scene_id = ?",
+                    (json.dumps(red_zones), scene_id),
+                )
+                logger.info(f"Backfilled scene-level vlm_prompt into red zones for scene {scene_id}")
 
     def create_tables(self):
         Base.metadata.create_all(self.engine)
