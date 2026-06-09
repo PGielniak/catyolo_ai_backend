@@ -60,6 +60,7 @@ class SceneResponse(BaseModel):
     scene_prompt: Optional[str] = None
     scene_prompt_interval: Optional[int] = None
     scene_prompt_action_ids: Optional[list[UUID4]] = None
+    version: int = 0
 
 
 @router.get("/")
@@ -82,10 +83,22 @@ def list_scenes(config: SceneRouteConfig = Depends(get_scene_route_config)) -> l
                            red_zones=red_zones_objects,
                            scene_prompt=scene.scene_prompt,
                            scene_prompt_interval=scene.scene_prompt_interval,
-                           scene_prompt_action_ids=scene.scene_prompt_action_ids)
+                           scene_prompt_action_ids=scene.scene_prompt_action_ids,
+                           version=scene.version or 0)
 
     mapped_scenes = list(map(map_scene, scenes))
     return mapped_scenes
+
+@router.get("/version")
+def get_scenes_version(config: SceneRouteConfig = Depends(get_scene_route_config)):
+    """Return the highest version across all scenes. Used by the worker to detect
+    that the backend scene config has changed and needs to be reloaded."""
+    config.logger.info("Received request for scenes version")
+    scenes = config.scene_service.get_all_scenes()
+    max_version = 0
+    if scenes:
+        max_version = max((s.version or 0) for s in scenes)
+    return {"version": max_version}
 
 @router.get("/{scene_id}")
 def get_scene(scene_id: UUID4, config: SceneRouteConfig = Depends(get_scene_route_config)) -> SceneResponse:
@@ -107,7 +120,8 @@ def get_scene(scene_id: UUID4, config: SceneRouteConfig = Depends(get_scene_rout
                                  red_zones=red_zones_objects,
                                  scene_prompt=scene.scene_prompt,
                                  scene_prompt_interval=scene.scene_prompt_interval,
-                                 scene_prompt_action_ids=scene.scene_prompt_action_ids)
+                                 scene_prompt_action_ids=scene.scene_prompt_action_ids,
+                                 version=scene.version or 0)
     return mapped_scene
 
 @router.post("/create")
@@ -144,7 +158,8 @@ def create_scene(scene_request: SceneCreateUpdateRequest, config: SceneRouteConf
         red_zones=red_zones_objects,
         scene_prompt=scene.scene_prompt,
         scene_prompt_interval=scene.scene_prompt_interval,
-        scene_prompt_action_ids=scene.scene_prompt_action_ids
+        scene_prompt_action_ids=scene.scene_prompt_action_ids,
+        version=scene.version or 0
     )
     return mapped_scene
 
@@ -183,7 +198,8 @@ def update_scene(scene_id: UUID4, scene_request: SceneCreateUpdateRequest, confi
                                   red_zones=red_zones_objects,
                                   scene_prompt=updated_scene.scene_prompt,
                                   scene_prompt_interval=updated_scene.scene_prompt_interval,
-                                  scene_prompt_action_ids=updated_scene.scene_prompt_action_ids)
+                                  scene_prompt_action_ids=updated_scene.scene_prompt_action_ids,
+                                  version=updated_scene.version or 0)
     return mapped_scene
 
 @router.delete("/delete/{scene_id}")

@@ -38,7 +38,8 @@ class SceneService:
                      red_zones=red_zones_dict,
                      scene_prompt=scene_prompt,
                      scene_prompt_interval=scene_prompt_interval,
-                     scene_prompt_action_ids=scene_prompt_action_ids_str)
+                     scene_prompt_action_ids=scene_prompt_action_ids_str,
+                     version=1)
         self.database.create_scene(scene)
         return scene
 
@@ -73,6 +74,7 @@ class SceneService:
             scene.scene_prompt_action_ids = [str(uuid) for uuid in scene_prompt_action_ids]
         else:
             scene.scene_prompt_action_ids = scene_prompt_action_ids
+        scene.version = (scene.version or 0) + 1
         self.database.update_scene(scene)
 
         return scene

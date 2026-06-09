@@ -45,6 +45,8 @@ class SqliteDatabase:
                 conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt_interval INTEGER")
             if 'scene_prompt_action_ids' not in cols:
                 conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt_action_ids JSON")
+            if 'version' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN version INTEGER NOT NULL DEFAULT 0")
             # action_ids moved from the scene level into each red zone (stored inside
             # the red_zones JSON column). Drop the now-obsolete column.
             if 'action_ids' in cols:

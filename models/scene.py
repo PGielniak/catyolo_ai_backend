@@ -18,6 +18,7 @@ class Scene(Base):
     scene_prompt = Column(Text, nullable=True)
     scene_prompt_interval = Column(Integer, nullable=True)
     scene_prompt_action_ids = Column(JSON, nullable=True)
+    version = Column(Integer, nullable=False, default=0)
 
 
 @dataclass(frozen=True)
