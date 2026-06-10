@@ -4,6 +4,7 @@ from uuid import uuid4
 from dataclasses import dataclass
 from fastapi import APIRouter, Depends, HTTPException, status
 import logging
+import socket
 
 from database.sqlite import SqliteDatabase
 from services.action_service import ActionService
@@ -30,6 +31,16 @@ class ActionDeleteRequest(BaseModel):
 
 class ActionGetRequest(BaseModel):
     action_id: UUID4
+
+
+class SmbTestRequest(BaseModel):
+    smb_host: str
+    smb_port: int = 445
+
+
+class SmbTestResponse(BaseModel):
+    ok: bool
+    message: str
 
 
 class ActionResponse(BaseModel):
@@ -103,6 +114,17 @@ def update_action(action_id: UUID4,action_request: ActionCreateUpdateRequest, co
                                   action_type=updated_action.action_type,
                                   action_config=updated_action.action_config)
     return mapped_action
+
+@router.post("/test-smb")
+def test_smb_connection(body: SmbTestRequest) -> SmbTestResponse:
+    """TCP-probe whether the SMB host:port is reachable from the server."""
+    try:
+        with socket.create_connection((body.smb_host, body.smb_port), timeout=5):
+            pass
+        return SmbTestResponse(ok=True, message=f"Reached {body.smb_host}:{body.smb_port}")
+    except OSError as exc:
+        return SmbTestResponse(ok=False, message=str(exc))
+
 
 @router.delete("/delete/{action_id}")
 def delete_action(action_id: UUID4, config: ActionRouteConfig = Depends(get_action_route_config)):
