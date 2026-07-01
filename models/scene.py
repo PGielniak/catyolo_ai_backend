@@ -31,11 +31,12 @@ class CameraFrame:
 
 @dataclass(frozen=True)
 class RedZone:
-    x: int
-    y: int
-    width: int
-    height: int
     forbidden_classes: list[str]
+    points: Optional[list[tuple[int, int]]] = None
+    x: Optional[int] = None
+    y: Optional[int] = None
+    width: Optional[int] = None
+    height: Optional[int] = None
     vlm_prompt: Optional[str] = None
     vlm_decides_trigger: Optional[bool] = False
     depth_enabled: Optional[bool] = None
