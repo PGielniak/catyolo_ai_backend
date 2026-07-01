@@ -6,14 +6,16 @@ from typing import Optional
 from urllib.parse import quote
 
 import cv2
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, status, Depends
+from dependencies.auth import require_api_key
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(require_api_key)])
 
 
 @dataclass
 class FrameRouteConfig:
     logger: logging.Logger
+    database: object  # SqliteDatabase — avoid circular import
 
 
 route_config: FrameRouteConfig = None
@@ -48,14 +50,31 @@ def _grab_frame(camera_ip: str, camera_port: int, username: str, password: str) 
 def get_frame(
     camera_ip: str,
     camera_port: int,
+    scene_id: Optional[str] = None,
     camera_username: Optional[str] = None,
     camera_password: Optional[str] = None,
 ):
     cfg = get_frame_route_config()
     cfg.logger.info(f'Frame requested for {camera_ip}:{camera_port}')
 
-    username = quote(camera_username or os.getenv('CAMERA_USERNAME', ''), safe='')
-    password = quote(camera_password or os.getenv('CAMERA_PASSWORD', ''), safe='')
+    raw_password = camera_password or ''
+    raw_username = camera_username or ''
+
+    # If no password supplied, look it up from the scene record
+    if not raw_password and scene_id:
+        scene = cfg.database.get_scene(scene_id)
+        if scene:
+            raw_password = scene.camera_password or ''
+            if not raw_username:
+                raw_username = scene.camera_username or ''
+
+    if not raw_password:
+        raw_password = os.getenv('CAMERA_PASSWORD', '')
+    if not raw_username:
+        raw_username = os.getenv('CAMERA_USERNAME', '')
+
+    username = quote(raw_username, safe='')
+    password = quote(raw_password, safe='')
 
     try:
         jpeg_bytes = _grab_frame(camera_ip, camera_port, username, password)

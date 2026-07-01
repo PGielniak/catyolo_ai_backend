@@ -6,6 +6,7 @@ import logging
 from uuid import UUID
 from models.scene import Scene, Base
 from models.action import Action
+from models.api_key import ApiKey
 from contextlib import contextmanager
 
 logger = logging.getLogger("catyolo_backend")
@@ -28,7 +29,6 @@ class SqliteDatabase:
         finally:
             session.close()
 
-
     def migrate(self):
         """Add columns introduced after initial schema creation and drop removed ones."""
         with sqlite3.connect(self.db_path) as conn:
@@ -45,32 +45,31 @@ class SqliteDatabase:
                 conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt_interval INTEGER")
             if 'scene_prompt_action_ids' not in cols:
                 conn.execute("ALTER TABLE scenes ADD COLUMN scene_prompt_action_ids JSON")
+            if 'global_detection_enabled' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN global_detection_enabled INTEGER NOT NULL DEFAULT 0")
+            if 'global_detection_classes' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN global_detection_classes JSON")
+            if 'global_detection_action_ids' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN global_detection_action_ids JSON")
+            if 'global_detection_cooldown_seconds' not in cols:
+                conn.execute("ALTER TABLE scenes ADD COLUMN global_detection_cooldown_seconds INTEGER NOT NULL DEFAULT 60")
             if 'version' not in cols:
                 conn.execute("ALTER TABLE scenes ADD COLUMN version INTEGER NOT NULL DEFAULT 0")
-            # action_ids moved from the scene level into each red zone (stored inside
-            # the red_zones JSON column). Drop the now-obsolete column.
             if 'action_ids' in cols:
                 try:
                     conn.execute("ALTER TABLE scenes DROP COLUMN action_ids")
                 except sqlite3.OperationalError as e:
                     logger.warning(f"Could not drop scenes.action_ids column: {e}")
-            # vlm_prompt moved from the scene level into each red zone (stored inside
-            # the red_zones JSON column). Backfill any existing scene-level prompt into
-            # its zones, then drop the now-obsolete column.
             if 'vlm_prompt' in cols:
                 self._backfill_vlm_prompt_into_red_zones(conn)
                 try:
                     conn.execute("ALTER TABLE scenes DROP COLUMN vlm_prompt")
                 except sqlite3.OperationalError as e:
-                    # DROP COLUMN requires SQLite >= 3.35.0; leave the column in place
-                    # (it is no longer mapped by the ORM, so it is harmless) if unsupported.
                     logger.warning(f"Could not drop scenes.vlm_prompt column: {e}")
             conn.commit()
 
     @staticmethod
     def _backfill_vlm_prompt_into_red_zones(conn: sqlite3.Connection):
-        """Copy each scene's legacy scene-level vlm_prompt into every red zone that
-        does not already define its own prompt."""
         cur = conn.cursor()
         cur.execute(
             "SELECT scene_id, red_zones, vlm_prompt FROM scenes "
@@ -99,6 +98,8 @@ class SqliteDatabase:
     def create_tables(self):
         Base.metadata.create_all(self.engine)
 
+    # ── Scene ──────────────────────────────────────────────────────────
+
     def create_scene(self, scene: Scene):
         with self.get_session() as session:
             session.add(scene)
@@ -118,6 +119,8 @@ class SqliteDatabase:
     def get_all_scenes(self):
         with self.get_session() as session:
             return session.query(Scene).all()
+
+    # ── Action ─────────────────────────────────────────────────────────
 
     def create_action(self, action: Action):
         with self.get_session() as session:
@@ -139,6 +142,19 @@ class SqliteDatabase:
         with self.get_session() as session:
             session.query(Action).filter(Action.action_id == str(action_id)).delete()
 
+    # ── ApiKey ─────────────────────────────────────────────────────────
+
+    def create_api_key(self, key: ApiKey):
+        with self.get_session() as session:
+            session.add(key)
+
+    def get_api_key_by_hash(self, key_hash: str):
+        with self.get_session() as session:
+            return session.query(ApiKey).filter(ApiKey.key_hash == key_hash).first()
+
+    def get_all_api_keys(self):
+        with self.get_session() as session:
+            return session.query(ApiKey).all()
+
     def close(self):
         self.engine.dispose()
-

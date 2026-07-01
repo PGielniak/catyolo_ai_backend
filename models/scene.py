@@ -18,6 +18,10 @@ class Scene(Base):
     scene_prompt = Column(Text, nullable=True)
     scene_prompt_interval = Column(Integer, nullable=True)
     scene_prompt_action_ids = Column(JSON, nullable=True)
+    global_detection_enabled = Column(Integer, nullable=False, default=0)
+    global_detection_classes = Column(JSON, nullable=True)
+    global_detection_action_ids = Column(JSON, nullable=True)
+    global_detection_cooldown_seconds = Column(Integer, nullable=False, default=60)
     version = Column(Integer, nullable=False, default=0)
 
 
@@ -33,6 +37,7 @@ class RedZone:
     height: int
     forbidden_classes: list[str]
     vlm_prompt: Optional[str] = None
+    vlm_decides_trigger: Optional[bool] = False
     depth_enabled: Optional[bool] = None
     depth_margin: Optional[float] = None
     action_ids: Optional[list[str]] = None
